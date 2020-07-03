@@ -52,6 +52,7 @@ class MainActivity : AppCompatActivity() {
             {
                 throwButton.visibility = View.INVISIBLE
                 scoreButton.visibility = View.VISIBLE
+
             }
 
         }
@@ -59,6 +60,13 @@ class MainActivity : AppCompatActivity() {
             numOfThrows = 0
             throwButton.visibility = View.VISIBLE
             scoreButton.visibility = View.INVISIBLE
+
+            val choice = spinner.selectedItemPosition
+            /*Toast.makeText(this, "Score  " + spinner.selectedItemPosition.toString()
+                , Toast.LENGTH_LONG).show()*/
+
+            countScore(4)
+
         }
 
         //Saves the dices user press
@@ -100,13 +108,123 @@ class MainActivity : AppCompatActivity() {
             }
     }
 
+    private fun countScore(sum:Int){
+        //Sum is the score point we are looking for.
+        var tempBank: MutableList<Dice> = mutableListOf<Dice>()
+        var count = 0
+
+        for(dice in diceBank)
+        {
+            tempBank.add(dice)
+        }
+
+        count = sumUpTheDices(sum, tempBank)
+
+        Toast.makeText(this, "Score  $count"
+       , Toast.LENGTH_LONG).show()
+
+    }
+    /*
+    private fun sumUpTheDices(valueToReach:Int, tempoBank:MutableList<Dice>): Int{
+
+        var count = 0
+
+        while(tempoBank.isNotEmpty())
+            {
+                var diceTouse = tempoBank[0]
+                tempoBank.removeAt(0)
+
+                var tempBank2: MutableList<Dice> = mutableListOf<Dice>()
+                for(die in tempoBank)
+                {
+                    tempBank2.add(die)
+                }
+                if(diceTouse.value == valueToReach)
+                {
+                    count++
+                }
+                //If combo where found, refresh the bank
+                else if (checkMoreCombos(diceTouse.value, valueToReach, tempBank2) == 1)
+                {
+
+                    tempoBank.clear()
+
+                    for (die in tempBank2) {
+                        tempoBank.add(die)
+                    }
+
+                    count++
+                }
+            }
+
+
+         return count
+    }*/
+
+/*
+    private fun checkMoreCombos(currentSum:Int,valueToReach:Int,tempoBank:MutableList<Dice>):Int
+    {
+        if(currentSum == valueToReach)
+        {
+            return 1
+        }
+        if(tempoBank.isNotEmpty())
+        {
+            //Go through the first iteration
+            for(die in tempoBank)
+            {
+                var diceVal = die.value
+                var sum = (diceVal + currentSum)
+
+
+                if(sum == valueToReach)
+                {
+                    tempoBank.remove(die)
+                    return 1
+                }
+                else if(sum > valueToReach)
+                {
+                    sum -= die.value
+                }
+                else
+                {
+                    var tempBank2: MutableList<Dice> = mutableListOf<Dice>()
+
+                    for(die2 in tempoBank)
+                    {
+                        tempBank2.add(die2)
+                    }
+                    tempBank2.removeAt(0)
+
+                    for(die3 in tempBank2)
+                    {
+                        if(checkMoreCombos(die3.value+currentSum,valueToReach,tempoBank) == 1)
+                        {
+                            tempoBank.remove(die3)
+                            tempBank2.remove(die3)
+                            return 1
+                        }
+                    }
+                    if(checkMoreCombos(sum,valueToReach,tempoBank) == 1)
+                    {
+                        tempoBank.remove(die)
+                        return 1
+                    }
+                }
+            }
+
+        }
+
+
+        return 0
+    }*/
     private fun rollDices()
     {
         for (dice in diceBank)
         {
             if(!dice.clicked)
             {
-                dice.value = Random.nextInt(1,6)
+                dice.value = Random.nextInt(1,7)
                 dice.button.setBackgroundResource(whiteDiceBackground[dice.value-1])
             }
         }
