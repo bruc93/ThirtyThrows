@@ -1,16 +1,15 @@
 package com.bignerdranch.android.thirtythrows
-
+import android.content.Intent
 import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
 import android.view.View
-import android.widget.ArrayAdapter
-import android.widget.Button
-import android.widget.Spinner
-import android.widget.Toast
-import kotlinx.android.synthetic.main.activity_main.*
+import android.widget.*
+import androidx.lifecycle.ViewModelProvider
+import java.time.Duration
 import kotlin.random.Random
 
 class MainActivity : AppCompatActivity() {
+    //------------------------ DATA ---------------------------------
     private lateinit var spinner:Spinner
     private lateinit var throwButton:Button
     private lateinit var scoreButton:Button
@@ -22,59 +21,155 @@ class MainActivity : AppCompatActivity() {
     private lateinit var diceButton5:Button
     private lateinit var diceButton6:Button
 
-    private lateinit var diceBank:List<Dice>
+    private lateinit var diceButtonBank:List<Button>
 
     private val whiteDiceBackground = arrayOf(R.drawable.white1, R.drawable.white2, R.drawable.white3,R.drawable.white4,R.drawable.white5,R.drawable.white6)
     private val redDiceBackground = arrayOf(R.drawable.red1,R.drawable.red2,R.drawable.red3,R.drawable.red4,R.drawable.red5,R.drawable.red6)
+    private lateinit var adapter:ArrayAdapter<*>
+
+    //------------------------ DATA ---------------------------------
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        val toast = Toast.makeText(applicationContext,"", Toast.LENGTH_SHORT)
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
+
+        var thirtyThrowViewModel = ViewModelProvider(this).get(ThirtyThrowViewModel::class.java)
 
         spinner = findViewById(R.id.spinner1)
         throwButton = findViewById(R.id.throw_button)
         scoreButton = findViewById(R.id.score_button)
 
-        scoreButton.visibility = View.INVISIBLE
-        //get dice buttons
-        initButtons()
+        if(thirtyThrowViewModel.getNumOfThrows() != 3)
+        {
+            scoreButton.visibility = View.INVISIBLE
+            throwButton.visibility = View.VISIBLE
+
+        }
+        else
+        {
+            scoreButton.visibility = View.VISIBLE
+            throwButton.visibility = View.INVISIBLE
+        }
+
+        initButtons(thirtyThrowViewModel)
+
         //Setting content for spinner
-        val adapter = ArrayAdapter.createFromResource(this,R.array.numbers,android.R.layout.simple_spinner_item)
-        adapter.setDropDownViewResource(android.R.layout.simple_spinner_dropdown_item)
+        var numberList = resources.getStringArray(R.array.numbers)
+
+        thirtyThrowViewModel.initListChoice(numberList)
+
+
+        adapter = ArrayAdapter(this,android.R.layout.simple_list_item_1,thirtyThrowViewModel.getChoiceOfList())
+
         spinner.adapter = adapter
 
-        var numOfThrows = 0
+
         throwButton.setOnClickListener {
-            rollDices()
-            numOfThrows++
-
-            if(numOfThrows == 3)
+            rollDices(thirtyThrowViewModel)
+            if(thirtyThrowViewModel.getNumOfThrows() == 3)
             {
-                throwButton.visibility = View.INVISIBLE
-                scoreButton.visibility = View.VISIBLE
-
+                thirtyThrowViewModel.unclickAllDices()
+                for((index, dice) in diceButtonBank.withIndex())
+                {
+                    dice.setBackgroundResource(whiteDiceBackground[thirtyThrowViewModel.getDiceValue(index)-1])
+                }
+                showScoreButton()
+                toast.setText("Pick the dice/dices to be paired")
+                toast.show()
             }
 
         }
-        scoreButton.setOnClickListener {
-            numOfThrows = 0
-            throwButton.visibility = View.VISIBLE
-            scoreButton.visibility = View.INVISIBLE
 
-            val choice = spinner.selectedItemPosition
-            /*Toast.makeText(this, "Score  " + spinner.selectedItemPosition.toString()
-                , Toast.LENGTH_LONG).show()*/
+        scoreButton.setOnClickListener{
 
-            countScore(4)
+            if(!thirtyThrowViewModel.calculatingScore(spinner.selectedItemPosition))
+            {
+                endGame(thirtyThrowViewModel)
+                for((index,dice) in diceButtonBank.withIndex()){  // TO-DO <-- fix correct
+                    if(thirtyThrowViewModel.getDiceValue(index) == 0)
+                    {
+                        dice.visibility = View.INVISIBLE
+                    }
+                }
+            }
+            else
+            {
+                for(dice in diceButtonBank)
+                {
+                    dice.visibility = View.VISIBLE
+                }
 
+                rollDices(thirtyThrowViewModel)
+
+                toast.setText("Total Score  " + thirtyThrowViewModel.getTotalScore())
+                toast.show()
+
+                throwButton.visibility = View.VISIBLE
+                scoreButton.visibility = View.INVISIBLE
+
+                adapter = ArrayAdapter(this,android.R.layout.simple_list_item_1,thirtyThrowViewModel.getChoiceOfList())
+
+                spinner.adapter = adapter
+
+                endGame(thirtyThrowViewModel)
+            }
+            //Lock in the choice
         }
-
         //Saves the dices user press
-        saveDice()
+        for ((index,dice) in diceButtonBank.withIndex())
+            dice.setOnClickListener {
+                if(thirtyThrowViewModel.clickADice(index))
+                {
+                    dice.setBackgroundResource(redDiceBackground[thirtyThrowViewModel.getDiceValue(index)-1])
+                }
+                else
+                {
+                    dice.setBackgroundResource(whiteDiceBackground[thirtyThrowViewModel.getDiceValue(index)-1])
+                }
+            }
+        //saveDice()
 
     }
 
-    private fun initButtons(){
+    private fun showScoreButton()
+    {
+        throwButton.visibility = View.INVISIBLE
+        scoreButton.visibility = View.VISIBLE
+
+    }
+
+
+
+    private fun endGame(thirtyViewMod:ThirtyThrowViewModel)
+    {
+        var endOfGame = thirtyViewMod.getIfAllValuesUsed()
+
+        if(endOfGame || thirtyViewMod.getRoundsDone() >= 10)
+        {
+            val intent = Intent(this, ScoreActivity::class.java)
+                intent.putExtra("LOW", thirtyViewMod.getScoreFromBank(0))
+                intent.putExtra("4", thirtyViewMod.getScoreFromBank(1))
+                intent.putExtra("5", thirtyViewMod.getScoreFromBank(2))
+                intent.putExtra("6", thirtyViewMod.getScoreFromBank(3))
+                intent.putExtra("7", thirtyViewMod.getScoreFromBank(4))
+                intent.putExtra("8", thirtyViewMod.getScoreFromBank(5))
+                intent.putExtra("9", thirtyViewMod.getScoreFromBank(6))
+                intent.putExtra("10", thirtyViewMod.getScoreFromBank(7))
+                intent.putExtra("11", thirtyViewMod.getScoreFromBank(8))
+                intent.putExtra("12", thirtyViewMod.getScoreFromBank(9))
+                var scoreSend = thirtyViewMod.getTotalScore()
+                intent.putExtra("TOTAL_SCORE", scoreSend)
+
+            startActivity(intent)
+
+            thirtyViewMod.resetGame()
+        }
+    }
+
+
+    private fun initButtons(thirtyViewMod: ThirtyThrowViewModel)
+    {
         diceButton1 = findViewById(R.id.dice_button1)
         diceButton2 = findViewById(R.id.dice_button2)
         diceButton3 = findViewById(R.id.dice_button3)
@@ -82,156 +177,41 @@ class MainActivity : AppCompatActivity() {
         diceButton5 = findViewById(R.id.dice_button5)
         diceButton6 = findViewById(R.id.dice_button6)
 
-        diceBank = listOf(
-            Dice(1,false,diceButton1),
-            Dice(2,false,diceButton2),
-            Dice(3,false,diceButton3),
-            Dice(4,false,diceButton4),
-            Dice(5,false,diceButton5),
-            Dice(6,false,diceButton6)
+        diceButtonBank = listOf(
+            diceButton1,diceButton2,diceButton3,diceButton4,diceButton5,diceButton6
         )
-    }
 
-    private fun saveDice(){
-        for (dice in diceBank)
-            dice.button.setOnClickListener {
-                if(!dice.clicked){
-                    dice.clicked = true
-                    dice.button.setBackgroundResource(redDiceBackground[dice.value-1])
-                }
-                else
-                {
-                    dice.clicked = false
-                    dice.button.setBackgroundResource(whiteDiceBackground[dice.value-1])
-                }
-
-            }
-    }
-
-    private fun countScore(sum:Int){
-        //Sum is the score point we are looking for.
-        var tempBank: MutableList<Dice> = mutableListOf<Dice>()
-        var count = 0
-
-        for(dice in diceBank)
+        for ((index,dice) in diceButtonBank.withIndex())
         {
-            tempBank.add(dice)
+            if(thirtyViewMod.getDiceValue(index) == 0)
+            {
+                dice.visibility = View.INVISIBLE
+            }
+            else if(!thirtyViewMod.getDiceClicked(index))
+            {
+                dice.setBackgroundResource(whiteDiceBackground[thirtyViewMod.getDiceValue(index)-1])
+            }
+            else
+            {
+                dice.setBackgroundResource(redDiceBackground[thirtyViewMod.getDiceValue(index)-1])
+            }
         }
 
-        count = sumUpTheDices(sum, tempBank)
-
-        Toast.makeText(this, "Score  $count"
-       , Toast.LENGTH_LONG).show()
 
     }
-    /*
-    private fun sumUpTheDices(valueToReach:Int, tempoBank:MutableList<Dice>): Int{
 
-        var count = 0
-
-        while(tempoBank.isNotEmpty())
-            {
-                var diceTouse = tempoBank[0]
-                tempoBank.removeAt(0)
-
-                var tempBank2: MutableList<Dice> = mutableListOf<Dice>()
-                for(die in tempoBank)
-                {
-                    tempBank2.add(die)
-                }
-                if(diceTouse.value == valueToReach)
-                {
-                    count++
-                }
-                //If combo where found, refresh the bank
-                else if (checkMoreCombos(diceTouse.value, valueToReach, tempBank2) == 1)
-                {
-
-                    tempoBank.clear()
-
-                    for (die in tempBank2) {
-                        tempoBank.add(die)
-                    }
-
-                    count++
-                }
-            }
-
-
-         return count
-    }*/
-
-/*
-    private fun checkMoreCombos(currentSum:Int,valueToReach:Int,tempoBank:MutableList<Dice>):Int
+    private fun rollDices(thirtyViewMod: ThirtyThrowViewModel)
     {
-        if(currentSum == valueToReach)
+        thirtyViewMod.rollDices()
+
+        for ((index,dice) in diceButtonBank.withIndex())
         {
-            return 1
-        }
-        if(tempoBank.isNotEmpty())
-        {
-            //Go through the first iteration
-            for(die in tempoBank)
+            if(!thirtyViewMod.getDiceClicked(index))
             {
-                var diceVal = die.value
-                var sum = (diceVal + currentSum)
-
-
-                if(sum == valueToReach)
-                {
-                    tempoBank.remove(die)
-                    return 1
-                }
-                else if(sum > valueToReach)
-                {
-                    sum -= die.value
-                }
-                else
-                {
-                    var tempBank2: MutableList<Dice> = mutableListOf<Dice>()
-
-                    for(die2 in tempoBank)
-                    {
-                        tempBank2.add(die2)
-                    }
-                    tempBank2.removeAt(0)
-
-                    for(die3 in tempBank2)
-                    {
-                        if(checkMoreCombos(die3.value+currentSum,valueToReach,tempoBank) == 1)
-                        {
-                            tempoBank.remove(die3)
-                            tempBank2.remove(die3)
-                            return 1
-                        }
-                    }
-                    if(checkMoreCombos(sum,valueToReach,tempoBank) == 1)
-                    {
-                        tempoBank.remove(die)
-                        return 1
-                    }
-                }
-            }
-
-        }
-
-
-        return 0
-    }*/
-    private fun rollDices()
-    {
-        for (dice in diceBank)
-        {
-            if(!dice.clicked)
-            {
-                dice.value = Random.nextInt(1,7)
-                dice.button.setBackgroundResource(whiteDiceBackground[dice.value-1])
+                dice.setBackgroundResource(whiteDiceBackground[thirtyViewMod.getDiceValue(index)-1])
             }
         }
+
     }
 
-    private fun getValues() {
-        Toast.makeText(this, "Spinner 1 " + spinner.selectedItem.toString()
-            , Toast.LENGTH_LONG).show()
-    }
 }
